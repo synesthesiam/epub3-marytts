@@ -12,7 +12,7 @@ from zipfile import ZipFile
 from collections import defaultdict
 from pathlib import Path
 
-from bs4 import BeautifulSoup
+from lxml import etree
 from praatio import tgio
 from praatio.praatio_scripts import splitAudioOnTier
 
@@ -20,6 +20,7 @@ from praatio.praatio_scripts import splitAudioOnTier
 
 TIME_PATTERN = re.compile(r"(\d+):(\d+):(\d+).(\d+)")
 REGEX_SUBS = {"default": [(r"’", "'"), (r"[^a-zA-Z0-9.,?!']", " ")]}
+SMIL_NAMESPACE = "{http://www.w3.org/ns/SMIL}"
 
 logger = logging.getLogger("prepare")
 
@@ -71,13 +72,13 @@ def main():
     # Compute intervals
     logger.info("Computing intervals")
     text_dir = output_dir / "Text"
-    # intervals = get_intervals(text_dir, subs=REGEX_SUBS.get(args.subs, []))
+    intervals = get_intervals(text_dir, subs=REGEX_SUBS.get(args.subs, []))
 
     # TextGrid alignments
     logger.info("Writing alignments")
     align_dir = output_dir / "Align"
     align_dir.mkdir(parents=True, exist_ok=True)
-    # write_intervals(wav_dir, align_dir, intervals)
+    write_intervals(wav_dir, align_dir, intervals)
 
     # MaryTTS project
     mary_dir = output_dir / "marytts"
@@ -144,23 +145,23 @@ def get_intervals(text_dir, subs):
     intervals = defaultdict(list)
     for smil_path in text_dir.glob("*.smil"):
         with open(smil_path, "r") as smil_file:
-            smil_soup = BeautifulSoup(smil_file, features="html.parser")
+            smil_root = etree.parse(smil_file)
 
         xhtml_path = text_dir / f"{smil_path.stem}"
         with open(xhtml_path, "r") as xhtml_file:
-            xhtml_soup = BeautifulSoup(xhtml_file, features="html.parser")
+            xhtml_root = etree.parse(xhtml_file)
 
-        for par in smil_soup.find_all("par"):
-            src = par.find_all("text")[0]["src"]
+        for par in smil_root.findall(f"//{SMIL_NAMESPACE}par"):
+            src = par.find(f"{SMIL_NAMESPACE}text").attrib["src"]
             src_id = src.split("#")[1]
-            audio = par.find_all("audio")[0]
+            audio = par.find(f"{SMIL_NAMESPACE}audio")
 
-            audio_path = Path(audio["src"])
-            start_time = to_time(audio["clipbegin"])
-            end_time = to_time(audio["clipend"])
+            audio_path = Path(audio.attrib["src"])
+            start_time = to_time(audio.attrib["clipBegin"])
+            end_time = to_time(audio.attrib["clipEnd"])
 
             if end_time > start_time:
-                span = xhtml_soup.find_all(attrs={"id": src_id})[0]
+                span = xhtml_root.xpath(f"//*[@id='{src_id}']")[0]
                 text = span.text.strip()
 
                 # Do substitutions
