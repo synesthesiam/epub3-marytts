@@ -1,0 +1,24 @@
+plugins {
+    id 'de.dfki.mary.voicebuilding-legacy' version '5.4'
+    id 'maven'
+}
+
+wav.srcDir = file("wav")
+
+marytts {
+    voice {
+        name = 'my_voice'
+        gender = 'male'
+        language = 'en'
+        region = 'US'
+        domain = 'general'
+        type = 'unit selection'
+        description = 'A male English unit selection voice'
+        samplingRate = 16000
+        license {
+            name = 'Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International'
+            shortName = 'CC BY-NC-SA 4.0'
+            url = 'http://creativecommons.org/licenses/by-nc-sa/4.0/'
+        }
+    }
+}

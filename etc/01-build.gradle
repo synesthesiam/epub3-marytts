@@ -1,0 +1,5 @@
+plugins {
+  id "de.dfki.mary.voicebuilding.marytts-kaldi-mfa" version "0.3.6"
+}
+
+prepareForcedAlignment.wavDir = file("wav")
